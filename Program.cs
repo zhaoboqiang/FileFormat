@@ -13,39 +13,40 @@ namespace FileFormat
             return filters.Split(',').SelectMany(filter => System.IO.Directory.GetFiles(sourceFolder, filter, searchOption)).ToArray();
         }
 
-        private static void ProcessFile(UTF8Encoding utf8Encoding, string path)
+        private static string ProcessText(string srcText)
         {
-            var text = System.IO.File.ReadAllText(path);
-            text.Replace("\r\n", "\n");
-
-            System.IO.File.WriteAllText(path, text, utf8Encoding);
+            var text = srcText.Replace("\r\n", "\n").Replace("\r", "");
+            return text;
         }
 
-        static void ProcessDirectory(string path, string searchPattern)
+        static void ProcessDirectory(string srcDir, string dstDir, string searchPattern)
         {
-            var srcs = GetFiles(path, searchPattern, System.IO.SearchOption.AllDirectories);
-            var utf8Encoding = new System.Text.UTF8Encoding(true);
+            var srcFiles = GetFiles(srcDir, searchPattern, System.IO.SearchOption.AllDirectories);
+            var ansiEncoding = Encoding.GetEncoding(936);
 
-            foreach (var src in srcs)
+            foreach (var srcFile in srcFiles)
             {
-                ProcessFile(utf8Encoding, src);
+                var dstFile = srcFile.Replace(srcDir, dstDir);
+                var srcText = System.IO.File.ReadAllText(srcFile, ansiEncoding);
+                var dstText = ProcessText(srcText);
+                System.IO.File.WriteAllText(dstFile, dstText, ansiEncoding);
             }
         }
 
         static void Main(string[] args)
         {
-            if (args.Length < 1)
+            if (args.Length < 2)
             {
-                Console.WriteLine("path [searchPattern]");
+                Console.WriteLine("srcpath dstpath [searchPattern]");
             }
 
             string searchPattern = "*.h,*.cpp,*.c";
-            if (args.Length == 2) 
+            if (args.Length == 3) 
             {
-                searchPattern = args[1];
+                searchPattern = args[2];
             }
 
-            ProcessDirectory(args[0], searchPattern);
+            ProcessDirectory(args[0], args[1], searchPattern);
         }
     }
 }
