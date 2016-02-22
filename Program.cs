@@ -48,10 +48,11 @@ namespace FileFormat
             return text;
         }
 
-        static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage)
+        static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage, bool convertToUtf8)
         {
             var srcFiles = GetFiles(srcDir, searchPattern, System.IO.SearchOption.AllDirectories);
             var ansiEncoding = Encoding.GetEncoding(srcCodepage);
+            var utf8Encoding = Encoding.UTF8;
 
             bool sameDir = srcDir == dstDir;
 
@@ -61,9 +62,16 @@ namespace FileFormat
                 var srcText = System.IO.File.ReadAllText(srcFile, ansiEncoding);
                 var dstText = ProcessText(srcText);
 
-                if (sameDir && srcText != dstText)
+                if (!sameDir || srcText != dstText)
                 {
-                    System.IO.File.WriteAllText(dstFile, dstText, ansiEncoding);
+                    if (convertToUtf8)
+                    {
+                        System.IO.File.WriteAllText(dstFile, dstText, utf8Encoding);
+                    }
+                    else
+                    {
+                        System.IO.File.WriteAllText(dstFile, dstText, ansiEncoding);
+                    }
                 }
             }
         }
@@ -73,7 +81,7 @@ namespace FileFormat
             var options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                ProcessDirectory(options.srcDir, options.dstDir, options.extension, options.srcCodepage);
+                ProcessDirectory(options.srcDir, options.dstDir, options.extension, options.srcCodepage, options.convertToUtf8);
             } 
         }
     }
