@@ -20,9 +20,6 @@ namespace FileFormat
         [Option('e', "ext", DefaultValue = "*.h,*.cpp,*.c", HelpText = "extension search pattern.")]
         public string extension { get; set; }
 
-        [Option('u', "utf", DefaultValue = true, HelpText = "convert to utf8.")]
-        public bool convertToUtf8 { get; set; }
-
         [Option('c', "cp", DefaultValue = 936, HelpText = "default code page.")]
         public int srcCodepage { get; set; }
 
@@ -88,7 +85,51 @@ namespace FileFormat
             return srcText;
         }
 
-        static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage, bool convertToUtf8)
+        static bool IsByteArrayEquals(byte[] a1, int offset1, byte[] a2, int offset2)
+        {
+            int n1 = a1.Length - offset1;
+            int n2 = a2.Length - offset2;
+            
+            if (n1 != n2)
+            {
+                return false;
+            }
+
+            int i1 = offset1;
+            int i2 = offset2;
+            
+            while (n1-- > 0)
+            {
+                if (a1[i1++] != a2[i2++])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        static void SaveText(string srcFile, string dstFile, string text)
+        {
+            var utf8Encoding = new UTF8Encoding();
+
+            var srcBytes = File.ReadAllBytes(srcFile);
+            var dstBytes = utf8Encoding.GetBytes(text);
+
+            int offset = 0;
+            
+            if (srcBytes.Length == dstBytes.Length + 3 && (srcBytes[0] == 0xEF && srcBytes[1] == 0xBB && srcBytes[2] == 0xBF))
+            {
+                offset = 3;
+            }
+
+            if (!IsByteArrayEquals(srcBytes, offset, dstBytes, 0))
+            {
+                System.IO.File.WriteAllText(dstFile, text, Encoding.UTF8);
+            }
+        }
+
+        static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage)
         {
             if (string.IsNullOrEmpty(dstDir))
             {
@@ -97,24 +138,16 @@ namespace FileFormat
 
             var srcFiles = GetFiles(srcDir, searchPattern, System.IO.SearchOption.AllDirectories);
             var srcEncoding = Encoding.GetEncoding(srcCodepage);
-            var utf8Encoding = Encoding.UTF8;
             Ude.CharsetDetector charsetDetector = new Ude.CharsetDetector();
 
             foreach (var srcFile in srcFiles)
             {
                 var encoding = GetTextEncoding(srcFile, charsetDetector, srcEncoding);
                 var dstFile = srcFile.Replace(srcDir, dstDir);
-                var srcText = File.ReadAllText(srcFile, srcEncoding);
+                var srcText = File.ReadAllText(srcFile, encoding);
                 var dstText = ProcessText(srcText);
 
-                if (convertToUtf8)
-                {
-                    System.IO.File.WriteAllText(dstFile, dstText, utf8Encoding);
-                }
-                else
-                {
-                    System.IO.File.WriteAllText(dstFile, dstText, encoding);
-                }
+                SaveText(srcFile, dstFile, dstText);
             }
         }
 
@@ -123,7 +156,7 @@ namespace FileFormat
             var options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                ProcessDirectory(options.srcDir, options.dstDir, options.extension, options.srcCodepage, options.convertToUtf8);
+                ProcessDirectory(options.srcDir, options.dstDir, options.extension, options.srcCodepage);
             } 
         }
     }
