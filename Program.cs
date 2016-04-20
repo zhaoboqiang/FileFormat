@@ -11,19 +11,19 @@ namespace FileFormat
 {
     class Options
     {
-        [Option('s', "src", Required = true, HelpText = "source directory.")]
+        [Option('i', "input", Required = true, HelpText = "input directory.")]
         public string srcDir { get; set; }
 
-        [Option('d', "dst", Required = true, HelpText = "destination directory.")]
+        [Option('o', "output", DefaultValue = "", HelpText = "output directory.")]
         public string dstDir { get; set; }
 
         [Option('e', "ext", DefaultValue = "*.h,*.cpp,*.c", HelpText = "extension search pattern.")]
         public string extension { get; set; }
 
-        [Option('u', "utf", DefaultValue = false, HelpText = "convert to utf8.")]
+        [Option('u', "utf", DefaultValue = true, HelpText = "convert to utf8.")]
         public bool convertToUtf8 { get; set; }
 
-        [Option('c', "src_cp", DefaultValue = 936, HelpText = "source code page.")]
+        [Option('c', "cp", DefaultValue = 936, HelpText = "default code page.")]
         public int srcCodepage { get; set; }
 
         [ParserState]
@@ -43,7 +43,7 @@ namespace FileFormat
             return filters.Split(',').SelectMany(filter => System.IO.Directory.GetFiles(sourceFolder, filter, searchOption)).ToArray();
         }
 
-        private static Encoding GetTextEncoding(string filename, Ude.CharsetDetector charsetDetector)
+        private static Encoding GetTextEncoding(string filename, Ude.CharsetDetector charsetDetector, Encoding srcEncoding)
         {
             var encoding = Encoding.UTF8;
 
@@ -58,7 +58,9 @@ namespace FileFormat
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Failed to obtain encoding of the file to {0}. Corrupted characters may occur. {1}", charsetDetector.Charset, ex.Message);
+                    Console.WriteLine("Failed to obtain encoding of the file to {0}. Using source encoding instead. Corrupted characters may occur. {1}", charsetDetector.Charset, ex.Message);
+                    
+                    encoding = srcEncoding;
                 }
             }
 
@@ -88,29 +90,30 @@ namespace FileFormat
 
         static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage, bool convertToUtf8)
         {
+            if (string.IsNullOrEmpty(dstDir))
+            {
+                dstDir = srcDir;
+            }
+
             var srcFiles = GetFiles(srcDir, searchPattern, System.IO.SearchOption.AllDirectories);
+            var srcEncoding = Encoding.GetEncoding(srcCodepage);
             var utf8Encoding = Encoding.UTF8;
             Ude.CharsetDetector charsetDetector = new Ude.CharsetDetector();
 
-            bool sameDir = srcDir == dstDir;
-
             foreach (var srcFile in srcFiles)
             {
-                var srcEncoding = GetTextEncoding(srcFile, charsetDetector);
+                var encoding = GetTextEncoding(srcFile, charsetDetector, srcEncoding);
                 var dstFile = srcFile.Replace(srcDir, dstDir);
                 var srcText = File.ReadAllText(srcFile, srcEncoding);
                 var dstText = ProcessText(srcText);
 
-                if (!sameDir || srcText != dstText)
+                if (convertToUtf8)
                 {
-                    if (convertToUtf8)
-                    {
-                        System.IO.File.WriteAllText(dstFile, dstText, utf8Encoding);
-                    }
-                    else
-                    {
-                        System.IO.File.WriteAllText(dstFile, dstText, srcEncoding);
-                    }
+                    System.IO.File.WriteAllText(dstFile, dstText, utf8Encoding);
+                }
+                else
+                {
+                    System.IO.File.WriteAllText(dstFile, dstText, encoding);
                 }
             }
         }
