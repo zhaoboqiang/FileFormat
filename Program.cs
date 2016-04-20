@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -42,24 +43,62 @@ namespace FileFormat
             return filters.Split(',').SelectMany(filter => System.IO.Directory.GetFiles(sourceFolder, filter, searchOption)).ToArray();
         }
 
+        private static Encoding GetTextEncoding(string filename, Ude.CharsetDetector charsetDetector)
+        {
+            var encoding = Encoding.UTF8;
+
+            using (FileStream fs = File.OpenRead(filename))
+            {
+                charsetDetector.Feed(fs);
+                charsetDetector.DataEnd();
+
+                try
+                {
+                    encoding = Encoding.GetEncoding(charsetDetector.Charset);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Failed to obtain encoding of the file to {0}. Corrupted characters may occur. {1}", charsetDetector.Charset, ex.Message);
+                }
+            }
+
+            return encoding;
+        }
+
         private static string ProcessText(string srcText)
         {
-            var text = srcText.Replace("\r\n", "\n").Replace("\r", "");
-            return text;
+            // LF (Line feed, 0x0A, \r)
+            // CR (Carriage return, 0x0D, \n) 
+
+            var rCount = srcText.Count(c => c == '\r');
+            var nCount = srcText.Count(c => c == '\n');
+
+            if (rCount > 0 && nCount > 0)
+            {
+                return srcText.Replace("\r\n", "\n").Replace("\r", "");
+            }
+
+            if (rCount > 0)
+            {
+                return srcText.Replace("\r", "\n");
+            }
+
+            return srcText;
         }
 
         static void ProcessDirectory(string srcDir, string dstDir, string searchPattern, int srcCodepage, bool convertToUtf8)
         {
             var srcFiles = GetFiles(srcDir, searchPattern, System.IO.SearchOption.AllDirectories);
-            var ansiEncoding = Encoding.GetEncoding(srcCodepage);
             var utf8Encoding = Encoding.UTF8;
+            Ude.CharsetDetector charsetDetector = new Ude.CharsetDetector();
 
             bool sameDir = srcDir == dstDir;
 
             foreach (var srcFile in srcFiles)
             {
+                var srcEncoding = GetTextEncoding(srcFile, charsetDetector);
                 var dstFile = srcFile.Replace(srcDir, dstDir);
-                var srcText = System.IO.File.ReadAllText(srcFile, ansiEncoding);
+                var srcText = File.ReadAllText(srcFile, srcEncoding);
                 var dstText = ProcessText(srcText);
 
                 if (!sameDir || srcText != dstText)
@@ -70,7 +109,7 @@ namespace FileFormat
                     }
                     else
                     {
-                        System.IO.File.WriteAllText(dstFile, dstText, ansiEncoding);
+                        System.IO.File.WriteAllText(dstFile, dstText, srcEncoding);
                     }
                 }
             }
