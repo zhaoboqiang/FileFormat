@@ -46,6 +46,7 @@ namespace FileFormat
 
             using (FileStream fs = File.OpenRead(filename))
             {
+                charsetDetector.Reset();
                 charsetDetector.Feed(fs);
                 charsetDetector.DataEnd();
 
@@ -125,6 +126,8 @@ namespace FileFormat
 
             if (!IsByteArrayEquals(srcBytes, offset, dstBytes, 0))
             {
+                var dstPath = Path.GetDirectoryName(dstFile);
+                Directory.CreateDirectory(dstPath);
                 System.IO.File.WriteAllText(dstFile, text, Encoding.UTF8);
             }
         }
