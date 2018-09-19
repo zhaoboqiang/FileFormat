@@ -1,11 +1,9 @@
-﻿using System;
+﻿using CommandLine;
+using CommandLine.Text;
+using System;
 using System.IO;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using CommandLine;
-using CommandLine.Text;
 
 namespace FileFormat
 {
@@ -56,8 +54,8 @@ namespace FileFormat
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Failed to obtain encoding of the file to {0}. Using source encoding instead. Corrupted characters may occur. {1}", charsetDetector.Charset, ex.Message);
-                    
+                    Console.WriteLine("Failed to obtain encoding of the file: {0} to {1}. Using source encoding instead. Corrupted characters may occur. {2}", filename, charsetDetector.Charset, ex.Message);
+
                     encoding = srcEncoding;
                 }
             }
@@ -90,7 +88,7 @@ namespace FileFormat
         {
             int n1 = a1.Length - offset1;
             int n2 = a2.Length - offset2;
-            
+
             if (n1 != n2)
             {
                 return false;
@@ -98,7 +96,7 @@ namespace FileFormat
 
             int i1 = offset1;
             int i2 = offset2;
-            
+
             while (n1-- > 0)
             {
                 if (a1[i1++] != a2[i2++])
@@ -118,7 +116,7 @@ namespace FileFormat
             var dstBytes = utf8Encoding.GetBytes(text);
 
             int offset = 0;
-            
+
             if (srcBytes.Length == dstBytes.Length + 3 && (srcBytes[0] == 0xEF && srcBytes[1] == 0xBB && srcBytes[2] == 0xBF))
             {
                 offset = 3;
@@ -160,7 +158,7 @@ namespace FileFormat
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
                 ProcessDirectory(options.srcDir, options.dstDir, options.extension, options.srcCodepage);
-            } 
+            }
         }
     }
 }
