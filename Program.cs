@@ -18,7 +18,7 @@ namespace FileFormat
         [Option('e', "ext", DefaultValue = "*.h,*.cpp,*.c", HelpText = "extension search pattern.")]
         public string extension { get; set; }
 
-        [Option('c', "cp", DefaultValue = 936, HelpText = "default code page.")]
+        [Option('c', "cp", DefaultValue = 65001, HelpText = "default code page.")]
         public int srcCodepage { get; set; }
 
         [ParserState]
@@ -66,7 +66,7 @@ namespace FileFormat
         private static string ProcessText(string srcText)
         {
             // LF (Line feed, 0x0A, \r)
-            // CR (Carriage return, 0x0D, \n) 
+            // CR (Carriage return, 0x0D, \n)
 
             var rCount = srcText.Count(c => c == '\r');
             var nCount = srcText.Count(c => c == '\n');
@@ -122,7 +122,7 @@ namespace FileFormat
                 offset = 3;
             }
 
-            if (!IsByteArrayEquals(srcBytes, offset, dstBytes, 0))
+            if (!IsByteArrayEquals(srcBytes, offset, dstBytes, 0) || offset == 0)
             {
                 var dstPath = Path.GetDirectoryName(dstFile);
                 Directory.CreateDirectory(dstPath);
