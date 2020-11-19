@@ -1,5 +1,5 @@
 # FileFormat
-Format file, such as file line ending into unix(LF) and encoding into utf8.
+Format file, such as file line ending into unix(LF) and encoding into utf8-bom.
 
 For a example:
 
